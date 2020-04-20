@@ -104,6 +104,7 @@ class App
 
     function proxy()
     {
+
         $targetUri = Uri::parse($this->targetUrl);
         /**
          * 转发的Header
@@ -122,16 +123,14 @@ class App
             ]);
 
             //$jar = new \GuzzleHttp\Cookie\CookieJar;
-            if ($this->request->cookie){
+            if ($this->request->cookie) {
                 $jar = \GuzzleHttp\Cookie\CookieJar::fromArray(
                     $this->request->cookie,
                     explode(':', $this->request->header['host'])[0]
                 );
-            }
-            else{
+            } else {
                 $jar = null;
             }
-
 
             switch ($this->request->server["request_method"]) {
                 case "GET":
@@ -167,26 +166,29 @@ class App
                 return;
             }
 
+            error_log('Content-Length:' . strlen($response->getBody()->__toString()));
             /**
              * 将服务器Header原样响应给浏览器
              */
             $responseHeader = [];
+            $needContentLength = false;
             foreach ($response->getHeaders() as $name => $val) {
-                $responseHeader[$name] = $response->getHeaderLine($name);
-                if ($name == 'Transfer-Encoding') {
+                if (in_array(strtolower($name), ['transfer-encoding'])) {
+                    $needContentLength = true;
                     continue;
+
                 }
+                $responseHeader[$name] = $response->getHeaderLine($name);
                 $this->response->header($name, $response->getHeaderLine($name));
             }
-            if (!isset($headers['Content-Length'])) {
-                $this->response->header('Content-Length', strlen($response->getBody()->__toString()));
-            }
-            Log::debug(__METHOD__ . "[" . __LINE__ . "]>>>>>收到并转发HEADER:" . print_r($responseHeader, true));
-
-
             $conversion = new Conversion();
             $html = $conversion->convert($response->getBody()->__toString(), $response->getHeaderLine('Content-Type'));
 
+            if ($needContentLength) {
+                $responseHeader["Content-Length"] = strlen($html);
+                $this->response->header('Content-Length', strlen($html));
+            }
+            Log::debug(__METHOD__ . "[" . __LINE__ . "]>>>>>收到并转发HEADER:" . print_r($responseHeader, true));
             Log::info(__METHOD__ . "[" . __LINE__ . '] 200 ' . $code . ' ' . (round(($endAt - $startAt) / 100, 3)) . ' ' . strlen($html) . ' ' . $desc);
             $this->response->end($html);
 

@@ -1,5 +1,7 @@
-FROM docker.artron.net/library/php:7.1-fpm-nginx
-WORKDIR /var/www/public
+FROM docker.artron.net/library/swoole:4.4.16-php7.4
+WORKDIR /var/www/
 ADD . .
-ADD default.conf  /etc/nginx/sites-available/default
-EXPOSE 80
+RUN chown -R swoole:swoole /var/www/
+USER swoole
+ENTRYPOINT ["/usr/local/bin/php", "/var/www/swoole.php"]
+EXPOSE 9501
